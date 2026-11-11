@@ -65,8 +65,14 @@ function dist(lat1, lng1, lat2, lng2){        // формула гаверсин
   return 2*R*Math.asin(Math.sqrt(a));
 }
 function zoneOf(id){                           // центр — середнє останніх 10 точок, радіус охоплює 90 % точок, не менше 300 м
-  const pts = sightingsOf(id).slice(-10);
+  let pts = sightingsOf(id).slice(-10);
   if (pts.length < 3) return null;
+  // точки, позначені як «поза ареалом», не розширюють зону: відкидаємо викиди далі 3 медіан від медіанного центру
+  const med = a => { const b = [...a].sort((x,y) => x-y); return b[Math.floor(b.length/2)]; };
+  const mLat = med(pts.map(p => p.latitude)), mLng = med(pts.map(p => p.longitude));
+  const dm = med(pts.map(p => dist(mLat,mLng,p.latitude,p.longitude)));
+  const core = pts.filter(p => dist(mLat,mLng,p.latitude,p.longitude) <= Math.max(600, 3*dm));
+  if (core.length >= 3) pts = core;
   const lat = pts.reduce((s,p) => s+p.latitude, 0)/pts.length, lng = pts.reduce((s,p) => s+p.longitude, 0)/pts.length;
   const d = pts.map(p => dist(lat,lng,p.latitude,p.longitude)).sort((a,b) => a-b);
   const r = Math.max(300, d[Math.min(d.length-1, Math.ceil(d.length*0.9)-1)]);
